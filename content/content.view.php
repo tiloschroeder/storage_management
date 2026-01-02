@@ -28,6 +28,16 @@ class contentExtensionStorage_managementView extends AdministrationPage
      */
     public function __viewIndex()
     {
+        if (is_callable(array('Symphony', 'Author'))) {
+            $author = Symphony::Author();
+        } else {
+            $author = Administration::instance()->Author;
+        }
+
+        if ($author->isAuthor() === true) {
+            Administration::instance()->errorPageNotFound();
+        }
+
         $title = __('Storage Management');
 
         $this->setTitle(__('%1$s &ndash; %2$s', array(__('Symphony'), $title)));
@@ -35,27 +45,51 @@ class contentExtensionStorage_managementView extends AdministrationPage
         $this->appendSubheading(__($title));
 
         $fieldset = new XMLElement('fieldset', null, array('class' => 'settings'));
+        $fieldset->appendChild(new XMLElement('legend', __('Disk quota')));
 
+        // The disk quota graph and list already defined in renderDiskQuotaMeter() and
+        // renderDiskQuotaList() for the dashboard panel. Reused to avoid double code.
+        $fieldset->appendChild(extension_storage_management::renderDiskQuotaMeter());
+        $fieldset->appendChild(extension_storage_management::renderDiskQuotaList());
+
+        $this->Form->appendChild($fieldset);
+
+        $fieldset = new XMLElement('fieldset', null, array('class' => 'settings'));
         $fieldset->appendChild(new XMLElement('legend',__('Please choose what to delete')));
-        $fieldset->appendChild(new XMLElement('p',__('Removing will delete expired entries. Clearing will delete everything.', array('class' => 'help'))));
 
-        $fieldset->appendChild(Widget::Input('action[pur-file]', __('Remove expired file cache'), 'submit'));
-        $fieldset->appendChild(Widget::Input('action[pur-db]', __('Remove expired DB cache'), 'submit'));
+        $div = new XMLElement('div', null, array('class' => 'two columns'));
 
-        $fieldset->appendChild(Widget::Input('action[del-file]', __('Clear file cache'), 'submit'));
-        $fieldset->appendChild(Widget::Input('action[del-db]', __('Clear DB cache'), 'submit'));
+        $div1 = new XMLElement('div', null, array('class' => 'column'));
+        $div1->appendChild(new XMLElement('p', __('Database cleaning'), array('class' => 'help')));
+        $ul = new XMLElement('ul');
+        $ul->appendChild(new XMLElement('li', Widget::Input('action[pur-db]', __('Remove expired DB cache'), 'submit', array('class' => 'outline secondary'))));
+        $ul->appendChild(new XMLElement('li', Widget::Input('action[del-db]', __('Clear all DB cache'), 'submit', array('class' => 'outline secondary'))));
+        $div1->appendChild($ul);
+        $div->appendChild($div1);
 
-        $fieldset->appendChild(Widget::Input('action[del-cachelite]', __('Clear cachelite files'), 'submit'));
+        $div2 = new XMLElement('div', null, array('class' => 'column'));
+        $div2->appendChild(new XMLElement('p', __('File cleaning'), array('class' => 'help')));
+        $ul = new XMLElement('ul');
+        $ul->appendChild(new XMLElement('li', Widget::Input('action[del-cachelite]', __('Clear xCacheLite files only'), 'submit', array('class' => 'outline secondary'))));
+        $ul->appendChild(new XMLElement('li', Widget::Input('action[del-file]', __('Clear all cached files'), 'submit', array('class' => 'outline secondary'))));
+        $div2->appendChild($ul);
+        $div->appendChild($div2);
 
         if (is_dir(CACHE . '/cacheabledatasource')) {
             $fieldset->appendChild(Widget::Input('action[del-cacheabledatasource]', __('Clear Cacheable Datasource files'), 'submit'));
         }
 
+        $fieldset->appendChild($div);
+
+        // Show the result below the action buttons
+        $div = new XMLElement('div', null, array('aria-live' => 'polite', 'role' => 'status'));
+        if ($this->showResult) {
+            $div->appendChild($this->_Result);
+        }
+        $fieldset->appendChild($div);
+
         $this->Form->appendChild($fieldset);
 
-        if ($this->showResult) {
-            $this->Form->appendChild($this->_Result);
-        }
     }
 
     /**
@@ -72,14 +106,14 @@ class contentExtensionStorage_managementView extends AdministrationPage
                     case 'del-file':
                         $this->deleteFileCache();
                         break;
-                    case 'del-db':
-                        $this->deleteDBCache();
-                        break;
                     case 'del-cachelite':
                         $this->deleteCachelite();
                         break;
                     case 'pur-file':
                         $this->purgeFileCache();
+                        break;
+                    case 'del-db':
+                        $this->deleteDBCache();
                         break;
                     case 'pur-db':
                         $this->purgeDBCache();
@@ -92,21 +126,27 @@ class contentExtensionStorage_managementView extends AdministrationPage
         }
     }
 
-    /* Cachelite */
-    private function deleteCachelite()
-    {
-        $count = CacheManagement::purgeFileCache(false, '/^cache_(.+)/');
-
-        $this->_Result->appendChild(new XMLElement('p', __('All %d cachelite files deleted.', array($count))));
-        $this->showResult = true;
-    }
-
     /* File cache */
     private function deleteFileCache()
     {
         $count = CacheManagement::deleteFileCache();
 
         $this->_Result->appendChild(new XMLElement('p', __('All %d files in cache deleted.', array($count))));
+        if ($count > 0) {
+            $this->_Result->appendChild(new XMLElement('p', __('Note: Disk usage values are cached and may take a few minutes to update.')));
+        }
+        $this->showResult = true;
+    }
+
+    /* Cachelite */
+    private function deleteCachelite()
+    {
+        $count = CacheManagement::purgeFileCache(false, '/^cache_(.+)/');
+
+        $this->_Result->appendChild(new XMLElement('p', __('All %d xCacheLite files deleted.', array($count))));
+        if ($count > 0) {
+            $this->_Result->appendChild(new XMLElement('p', __('Note: Disk usage values are cached and may take a few minutes to update.')));
+        }
         $this->showResult = true;
     }
 
