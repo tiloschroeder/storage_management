@@ -12,7 +12,7 @@ if (!defined("__IN_SYMPHONY__")) {
 require_once(TOOLKIT . '/class.administrationpage.php');
 require_once(EXTENSIONS . '/storage_management/lib/class.cachemanagement.php');
 
-class contentExtensionStorage_managementView extends AdministrationPage
+class contentExtensionStorage_managementIndex extends AdministrationPage
 {
     private $_Result = null;
     private $showResult = false;
@@ -35,7 +35,7 @@ class contentExtensionStorage_managementView extends AdministrationPage
         }
 
         if ($author->isAuthor() === true) {
-            Administration::instance()->errorPageNotFound();
+            Administration::instance()->errorPageForbidden();
         }
 
         $title = __('Storage Management');

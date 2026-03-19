@@ -144,22 +144,10 @@ class extension_storage_management extends Extension
                 array (
                     'location' => __('System'),
                     'name' => __(self::EXT_NAME),
-                    'link' => 'view',
+                    'link' => '/',
                     'limit' => $group,
                 ) // nav group
             ); // nav
-    }
-
-    public function navigationPreRender($context)
-    {
-        $c = Administration::instance()->getPageCallback();
-        if ($c['driver'] == 'storage_management') {
-            foreach ($context['navigation'] as $key => $section) {
-                if ($section['name'] == 'System') {
-                    $context['navigation'][$key]['class'] = 'active';
-                }
-            }
-        }
     }
 
     /*-------------------------------------------------------------------------
